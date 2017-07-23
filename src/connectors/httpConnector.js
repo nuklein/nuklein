@@ -2,6 +2,7 @@
 import Kefir from 'kefir';
 import fetch from 'isomorphic-fetch';
 import { Fragment } from '../index';
+import mergeDataToPath from '../utils/mergeDataToPath';
 import type { GetPath } from '../types/GetPath';
 
 export default (addr: string, options?: Object = {}) => (MyFragment: typeof Fragment) => {
@@ -101,9 +102,9 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			})
 			.then(res => res.json())
 			.then(res => {
-				let data = res;
+				let data = mergeDataToPath(res, path);
 				if (afterGetData) {
-					data = { ...res, ...afterGetData };
+					data = { ...data, ...afterGetData };
 				}
 				this.data.setData(data, null, { clearPaths: true }, { method: this.onDataNotFoundAll });
 			})
