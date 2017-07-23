@@ -56,16 +56,24 @@ export default class Store {
 			this.emitter = new MyEmitter();
 			this.stream = Kefir.fromEvents(this.emitter, 'event')
 			.onValue((params) => this.setData(...params).getStore());
-			initializeFor(this.data, this.setStore, this.getStore);
-			this.afterInit(localProps, this.setStore, this.getStore);
 		} else {
-			this.stream = Kefir.stream(emitter => {
-				this.emitter = emitter;
-				initializeFor(this.data, this.setStore, this.getStore);
-				this.afterInit(localProps, this.setStore, this.getStore);
-			})
-			.map((params) => this.setData(...params).getStore());
+			this.emitter = {};
+			const emitPromise = new Promise(resolve => {
+				this.stream = Kefir.stream(emitter => {
+					this.emitter = emitter;
+					resolve();
+				})
+				.map((params) => this.setData(...params).getStore());
+			});
+			this.emitter.emit = (params) => {
+				emitPromise.then(() => {
+					this.emitter.emit(params);
+				});
+			};
 		}
+
+		initializeFor(this.data, this.setStore, this.getStore);
+		this.afterInit(localProps, this.setStore, this.getStore);
 	}
 	/* eslint-enable react/sort-comp */
 
