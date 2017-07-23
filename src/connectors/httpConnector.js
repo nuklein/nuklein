@@ -65,8 +65,6 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 				if (typeof onSet === 'function') {
 					onSet.bind(this.data)({ value, path, options: setDataOptions, info, resultat: res });
 				}
-				// this.data.setData(res, null, this, this.setData);
-				// console.dir(res);
 			})
 			.catch(err => {
 				if (!setErrorData && typeof onSetError !== 'function') {
@@ -107,9 +105,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 				if (afterGetData) {
 					data = { ...res, ...afterGetData };
 				}
-				this.dataNotFoundPaths = [];
-				this.data.dataNotFoundPaths = [];
-				this.data.setData(data, null, null, { method: this.onDataNotFoundAll });
+				this.data.setData(data, null, { clearPaths: true }, { method: this.onDataNotFoundAll });
 			})
 			.catch(err => {
 				if (!getErrorData && typeof onGetError !== 'function') {
@@ -134,6 +130,10 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			setDataOptions?: any,
 			info?: Object
 		) {
+			if (setDataOptions && setDataOptions.clearPaths) {
+				this.dataNotFoundPaths = [];
+				this.data.dataNotFoundPaths = [];
+			}
 			if ((
 				info
 				&& info.fragment instanceof Fragment
