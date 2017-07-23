@@ -1,0 +1,70 @@
+/* @flow */
+/* eslint-disable no-unused-vars */
+import { OrderedMap, List, Map as IMap } from 'immutable';
+import Kefir from 'kefir';
+import type { SubscribeParams } from './types/SubscribeParams';
+
+declare class Store {
+	data: IMap<*, *>|OrderedMap<*, *>|List<*>;
+	emitter: Object;
+	stream: Kefir.stream<Function, any>;
+}
+
+declare class Fragment {
+	data: IMap<*, *>|OrderedMap<*, *>|List<*>;
+	props: Object;
+	initialize: boolean;
+	getCount: number;
+	specificGetCount: number;
+}
+
+declare function subscribe(params: SubscribeParams) : any;
+
+declare function modificator(
+	store: Store,
+	func: Function,
+	componentOrServer: Function|{
+		name: string;
+	}
+) : (...args: Array<any>) => void
+
+declare function registerModificators(
+	store: Store,
+	modificators?: Function|Object,
+	componentOrServer: Function|{
+		name: string;
+	}
+) : void
+
+declare function httpConnector(
+	addr: string,
+	options?: Object
+) : (MyFragment: typeof Fragment) => Fragment;
+
+declare function arrayDecorator(
+	propName: string,
+	options?: Object
+) : (MyFragment: typeof Fragment) => Fragment;
+
+declare var Nuklein: {
+	Store: Store;
+	Fragment: Fragment;
+	subscribe: subscribe;
+	httpConnector: httpConnector;
+	arrayDecorator: arrayDecorator;
+	subscribe: subscribe;
+	modificator: modificator;
+	registerModificators: registerModificators;
+
+};
+
+module.exports = {
+	default: () => Nuklein,
+	Store,
+	Fragment,
+	subscribe,
+	httpConnector,
+	arrayDecorator,
+	modificator,
+	registerModificators,
+};
