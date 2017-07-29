@@ -1,5 +1,6 @@
 /* @flow */
 import Kefir from 'kefir';
+import type { Emitter } from 'kefir'; // eslint-disable-line
 import fetch from 'isomorphic-fetch';
 import { Fragment } from '../index';
 import mergeDataToPath from '../utils/mergeDataToPath';
@@ -9,53 +10,88 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 	const {
 		beforeGetData,
 		afterGetData,
-		ignoreModificators,
+		onlyLocalModificators,
 		onGetError,
 		getErrorData,
 		onSetError,
 		setErrorData,
 		onSet,
-		setDebounce = 0,
+		debounceForSet,
 		onlyServerModificators,
 	} = options;
 
 
 	return class HttpConnector extends Fragment {
-		setStreamEmitter = null;
+		stream: Kefir.Observable<*, *>;
+		setStreamEmitter: Emitter<*, *>;
+		debounceStreams: Kefir.Observable<*, *> | { [key: string]: Kefir.Observable<*, *>; };
+		debounceEmitters: Emitter<*, *> | { [key: string]: Emitter<*, *>; };
 
-		stream = Kefir.stream((emitter) => {
-			this.setStreamEmitter = emitter;
-		})
-		.debounce(setDebounce)
-		.onValue((args) => {
+		constructor(...args: Array<Object>) {
+			super(...args);
+
+			this.stream = Kefir.stream(emitter => {
+				this.setStreamEmitter = emitter;
+			})
+			.onValue(this.kefirOnValue);
+
+			if (debounceForSet) {
+				if (typeof debounceForSet === 'number') {
+					this.debounceStreams = Kefir.stream(emitter => {
+						this.debounceEmitters = emitter;
+					})
+					.debounce(debounceForSet)
+					.onValue(this.kefirOnValue);
+				} else if (typeof debounceForSet === 'object') {
+					this.debounceStreams = {};
+					this.debounceEmitters = {};
+
+					Object.keys(debounceForSet).forEach(key => {
+						this.debounceStreams[key] = Kefir.stream(emitter => {
+							this.debounceEmitters[key] = emitter;
+						})
+						.debounce(debounceForSet[key])
+						.onValue(this.kefirOnValue);
+					});
+				}
+			}
+		}
+
+		init() {
+			return new MyFragment();
+		}
+
+		kefirOnValue = (args: Object) => {
 			const { value, path, setDataOptions, info = {} } = args;
-			const myInfo = {};
+
+			const localInfo = {};
 			let notEmpty = false;
 			if (info.server) {
 				notEmpty = true;
-				myInfo.server = info.server;
+				localInfo.server = info.server;
 			}
 			if (info.component) {
 				notEmpty = true;
-				myInfo.component = info.component.name;
+				localInfo.component = info.component.name;
 			}
 			if (info.modificator) {
 				notEmpty = true;
-				myInfo.modificator = info.modificator.name;
+				localInfo.modificator = info.modificator.name;
 			}
 			if (info.fragment) {
 				notEmpty = true;
-				myInfo.fragment = info.fragment.constructor.name;
+				localInfo.fragment = info.fragment.constructor.name;
 			}
 			if (info.method) {
 				notEmpty = true;
-				myInfo.method = info.method.name;
+				localInfo.method = info.method.name;
 			}
+
 			fetch(addr, {
 				method: 'POST',
 				body: JSON.stringify({
 					method: 'setStore',
-					args: [value, path, setDataOptions, notEmpty ? myInfo : null],
+					args: [value, path, setDataOptions, notEmpty ? localInfo : null],
 				}),
 				headers: {
 					'Content-Type': 'application/json',
@@ -71,23 +107,22 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 				if (!setErrorData && typeof onSetError !== 'function') {
 					console.error(err);
 				}
+
 				if (setErrorData) {
 					this.data.setData(setErrorData, null, null, { method: this.setData });
 				}
+
 				if (typeof onSetError === 'function') {
 					onSetError.bind(this.data)(err);
 				}
 			});
-		});
-
-		init() {
-			return new MyFragment();
 		}
 
 		getDataFromServer(path: GetPath) {
 			if (beforeGetData !== undefined && beforeGetData !== null) {
 				this.data.setData(beforeGetData, null, null, { method: this.onDataNotFoundAll });
 			}
+
 			fetch(addr, {
 				method: 'POST',
 				body: JSON.stringify({
@@ -103,18 +138,22 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			.then(res => res.json())
 			.then(res => {
 				let data = mergeDataToPath(res, path);
+
 				if (afterGetData) {
 					data = { ...data, ...afterGetData };
 				}
+
 				this.data.setData(data, null, { clearPaths: true }, { method: this.onDataNotFoundAll });
 			})
 			.catch(err => {
 				if (!getErrorData && typeof onGetError !== 'function') {
 					console.error(err);
 				}
+
 				if (getErrorData) {
 					this.data.setData(getErrorData, null, null, { method: this.onDataNotFoundAll });
 				}
+
 				if (typeof onGetError === 'function') {
 					onGetError.bind(this.data)(err);
 				}
@@ -131,32 +170,78 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			setDataOptions?: any,
 			info?: Object
 		) {
-			if (setDataOptions && setDataOptions.clearPaths) {
+			let clearPaths;
+			if (setDataOptions) {
+				clearPaths = setDataOptions.clearPaths;
+			}
+
+			if (clearPaths) {
 				this.dataNotFoundPaths = [];
 				this.data.dataNotFoundPaths = [];
 			}
-			if ((
-				info
-				&& info.fragment instanceof Fragment
-				&& (info.fragment.constructor.name === this.constructor.name
-					|| info.fragment.constructor.name === this.data.constructor.name)
-				) || (
-				ignoreModificators
-				&& info
-				&& info.modificator
-				&& ignoreModificators.find((v) => v === info.modificator.name
-				))) {
+
+			const fragmentName = this.constructor.name;
+			const innerFragmentName = this.data.constructor.name;
+
+			let callingFragment;
+			let callingModificator;
+			if (info) {
+				callingFragment = info.fragment;
+				callingModificator = info.modificator;
+			}
+
+			let callingFragmentName;
+			if (callingFragment instanceof Fragment) {
+				callingFragmentName = callingFragment.constructor.name;
+			}
+
+			const isCallOfThis = callingFragmentName === fragmentName
+				|| callingFragmentName === innerFragmentName;
+
+			let callingModificatorName;
+			if (callingModificator) {
+				callingModificatorName = callingModificator.name;
+			}
+
+			let isIgnore = false;
+			if (onlyLocalModificators && callingModificatorName) {
+				isIgnore = onlyLocalModificators.find((v) => v === callingModificatorName);
+			}
+
+			if (isCallOfThis || isIgnore) {
 				return this.original.setData(value, path, setDataOptions, info);
 			}
-			if (this.setStreamEmitter) {
+
+			if (debounceForSet) {
+				if (this.debounceEmitters) {
+					if (typeof debounceForSet === 'number') {
+						this.debounceEmitters.emit({value, path, setDataOptions, info});
+					} else if (typeof debounceForSet === 'object') {
+						if (callingModificatorName && debounceForSet[callingModificatorName]) {
+							this.debounceEmitters[callingModificatorName].emit({
+								value,
+								path,
+								setDataOptions,
+								info,
+							});
+						} else if (this.setStreamEmitter) {
+							this.setStreamEmitter.emit({value, path, setDataOptions, info});
+						}
+					}
+				}
+			} else if (this.setStreamEmitter) {
 				this.setStreamEmitter.emit({value, path, setDataOptions, info});
 			}
-			if (info
-				&& info.modificator
-				&& onlyServerModificators
-				&& onlyServerModificators.find((v) => v === info.modificator.name)) {
+
+			let isOnlyServer = false;
+			if (callingModificatorName && onlyServerModificators) {
+				isOnlyServer = onlyServerModificators.find((v) => v === callingModificatorName);
+			}
+
+			if (isOnlyServer) {
 				return this.data;
 			}
+
 			return this.original.setData(value, path, setDataOptions, info);
 		}
 

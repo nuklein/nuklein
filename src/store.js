@@ -345,7 +345,7 @@ export default class Store {
 						info,
 						notInitFragms
 					);
-					localData = this.data.setIn(keys.slice(-1), result.data);
+					localData = this.data.setIn(keys, result.data);
 					notInitFragms = notInitFragms.concat(result.notInitFragms);
 				} else if (immMap[0][0] instanceof Fragment) {
 					const newPath = index > 0 ? normPath.slice(index - 1) : normPath.slice(1);

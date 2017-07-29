@@ -463,7 +463,7 @@ export default class Fragment {
 							notInitCb,
 							notInitFragms
 						);
-						localData = this.data.setIn(keys.slice(-1), result.data);
+						localData = this.data.setIn(keys, result.data);
 						notInitFragms = notInitFragms.concat(result.notInitFragms);
 					}
 				} else if (immMap[0][0] instanceof Fragment) {
