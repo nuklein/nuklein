@@ -57,7 +57,16 @@ export default class Fragment {
 		this.normalizeData = null;
 
 		this.original = {
-			setData: this._mergeData,
+			setData: (...args) => {
+				const newData = this._mergeData(...args);
+
+				this.data = newData;
+
+				this.normalizeData = null;
+				this.dataForPaths = new Map();
+
+				return newData;
+			},
 			getData: this.getData,
 		};
 	}
