@@ -18,6 +18,10 @@ class ArrayDecorator extends Fragment {
 				newData
 			);
 		}
+		this.normalizeData = null;
+		this.dataForPaths = new Map();
+		this.data.normalizeData = null;
+		this.data.dataForPaths = new Map();
 		return this.data;
 	}
 
@@ -31,6 +35,10 @@ class ArrayDecorator extends Fragment {
 				newData
 			);
 		}
+		this.normalizeData = null;
+		this.dataForPaths = new Map();
+		this.data.normalizeData = null;
+		this.data.dataForPaths = new Map();
 		return this.data;
 	}
 
@@ -46,10 +54,10 @@ class ArrayDecorator extends Fragment {
 			&& value
 			&& typeof this[setOptions.method] === 'function') {
 			if (options && options.include && !options.include.includes(setOptions.method)) {
-				return this.data.setData(value, path, setOptions, info);
+				return this.original.setData(value, path, setOptions, info);
 			}
 			return this[setOptions.method](value);
 		}
-		return this.data.setData(value, path, setOptions, info);
+		return this.original.setData(value, path, setOptions, info);
 	}
 };
