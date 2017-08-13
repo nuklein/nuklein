@@ -46,10 +46,10 @@ class ArrayDecorator extends Fragment {
 			&& value
 			&& typeof this[setOptions.method] === 'function') {
 			if (options && options.include && !options.include.includes(setOptions.method)) {
-				return this.original.setData(value, path, setOptions, info);
+				return this.data.setData(value, path, setOptions, info);
 			}
 			return this[setOptions.method](value);
 		}
-		return this.original.setData(value, path, setOptions, info);
+		return this.data.setData(value, path, setOptions, info);
 	}
 };
