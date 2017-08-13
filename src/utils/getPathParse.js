@@ -5,7 +5,7 @@ import type { GetPath } from '../types/GetPath';
 
 function stringPathParse(path: string, data: Object, insPath?: {
 	[propName: string]: GetPath;
-}, onDataNotFoundAll, onDataNotFound): { value: any; exit: boolean; } {
+}, onDataNotFound, onDataNotFoundOne): { value: any; exit: boolean; } {
 	let value = data;
 	const keys = path.split('.');
 	let exit = false;
@@ -61,8 +61,8 @@ function stringPathParse(path: string, data: Object, insPath?: {
 						newPath,
 						localValue.getDataIn(),
 						true,
-						onDataNotFoundAll,
-						onDataNotFound
+						onDataNotFound,
+						onDataNotFoundOne
 					);
 					localValue.getCounter();
 				} else {
@@ -71,8 +71,8 @@ function stringPathParse(path: string, data: Object, insPath?: {
 						newPath,
 						localValue.getDataIn(),
 						true,
-						onDataNotFoundAll,
-						onDataNotFound
+						onDataNotFound,
+						onDataNotFoundOne
 					);
 					localValue.getCounter();
 					localValue.afterGet(value);
@@ -100,8 +100,8 @@ function stringPathParse(path: string, data: Object, insPath?: {
 function arrayPathParse(
 	path: Array<GetPath>,
 	data: Object,
-	onDataNotFoundAll?: Function,
 	onDataNotFound?: Function,
+	onDataNotFoundOne?: Function,
 	originalPath?: GetPath,
 	keys?: Array<string|number>,
 	nfPath?: GetPath
@@ -112,8 +112,8 @@ function arrayPathParse(
 			const res = getPathParse(
 				v,
 				data,
-				onDataNotFoundAll,
 				onDataNotFound,
+				onDataNotFoundOne,
 				originalPath || path,
 				keys ? keys.concat(k) : [k],
 				notFoundPath
@@ -133,8 +133,8 @@ function objectPathParse(
 		[propName: string]: GetPath;
 	},
 	data: Object,
-	onDataNotFoundAll?: Function,
 	onDataNotFound?: Function,
+	onDataNotFoundOne?: Function,
 	originalPath?: GetPath,
 	keys?: Array<string|number>,
 	nfPath?: GetPath
@@ -143,7 +143,7 @@ function objectPathParse(
 	let notFoundPath = nfPath;
 	const insPath = {...path, ...{ _path: undefined }};
 	if (path._path) {
-		const strRes = stringPathParse(path._path, data, insPath, onDataNotFoundAll, onDataNotFound);
+		const strRes = stringPathParse(path._path, data, insPath, onDataNotFound, onDataNotFoundOne);
 		localData = strRes.value;
 		if (strRes.exit) {
 			return { value: localData, notFoundPath };
@@ -155,8 +155,8 @@ function objectPathParse(
 			const res = getPathParse(
 				path[key],
 				localData,
-				onDataNotFoundAll,
 				onDataNotFound,
+				onDataNotFoundOne,
 				originalPath || path,
 				keys ? keys.concat(key) : [key],
 				notFoundPath
@@ -174,8 +174,8 @@ function objectPathParse(
 export default function getPathParse(
 	path: GetPath,
 	data: Object,
-	onDataNotFoundAll?: Function,
 	onDataNotFound?: Function,
+	onDataNotFoundOne?: Function,
 	originalPath?: GetPath,
 	keys?: Array<string|number>,
 	notFoundPath?: GetPath
@@ -194,8 +194,8 @@ export default function getPathParse(
 				path,
 				localValue.getDataIn(),
 				true,
-				onDataNotFoundAll,
-				onDataNotFound
+				onDataNotFound,
+				onDataNotFoundOne
 			);
 			localValue.getCounter();
 		} else {
@@ -204,8 +204,8 @@ export default function getPathParse(
 				path,
 				localValue.getDataIn(),
 				true,
-				onDataNotFoundAll,
-				onDataNotFound
+				onDataNotFound,
+				onDataNotFoundOne
 			);
 			localValue.getCounter();
 			localValue.afterGet(value);
@@ -214,10 +214,10 @@ export default function getPathParse(
 	}
 
 	if (path && typeof path === 'string') {
-		value = stringPathParse(path, value, undefined, onDataNotFoundAll, onDataNotFound).value;
+		value = stringPathParse(path, value, undefined, onDataNotFound, onDataNotFoundOne).value;
 		if (value === undefined || value === null) {
-			if (onDataNotFound) {
-				value = onDataNotFound(path);
+			if (onDataNotFoundOne) {
+				value = onDataNotFoundOne(path);
 			}
 
 			if (originalPath && (value === undefined || value === null)) {
@@ -263,8 +263,8 @@ export default function getPathParse(
 		const res = arrayPathParse(
 			path,
 			value,
-			onDataNotFoundAll,
 			onDataNotFound,
+			onDataNotFoundOne,
 			originalPath || path,
 			keys,
 			nfPath
@@ -277,8 +277,8 @@ export default function getPathParse(
 		const res = objectPathParse(
 			path,
 			value,
-			onDataNotFoundAll,
 			onDataNotFound,
+			onDataNotFoundOne,
 			originalPath || path,
 			keys,
 			nfPath

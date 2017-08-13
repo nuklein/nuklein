@@ -116,7 +116,7 @@ export default class Store {
 				value = getPathParse(path, value).value;
 
 				if (typeof value !== 'object') {
-					// @TODO собирание не найденных значений, а потом вызов onDataNotFoundAll()
+					// @TODO собирание не найденных значений, а потом вызов onDataNotFound()
 					return value;
 				}
 				if (Iterable.isIterable(value)) {

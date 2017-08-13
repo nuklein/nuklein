@@ -120,7 +120,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 
 		getDataFromServer(path: GetPath) {
 			if (beforeGetData !== undefined && beforeGetData !== null) {
-				this.data.setData(beforeGetData, null, null, { method: this.onDataNotFoundAll });
+				this.data.setData(beforeGetData, null, null, { method: this.onDataNotFound });
 			}
 
 			fetch(addr, {
@@ -143,7 +143,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 					data = { ...data, ...afterGetData };
 				}
 
-				this.data.setData(data, null, { clearPaths: true }, { method: this.onDataNotFoundAll });
+				this.data.setData(data, null, { clearPaths: true }, { method: this.onDataNotFound });
 			})
 			.catch(err => {
 				if (!getErrorData && typeof onGetError !== 'function') {
@@ -151,7 +151,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 				}
 
 				if (getErrorData) {
-					this.data.setData(getErrorData, null, null, { method: this.onDataNotFoundAll });
+					this.data.setData(getErrorData, null, null, { method: this.onDataNotFound });
 				}
 
 				if (typeof onGetError === 'function') {
@@ -245,7 +245,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			return this.original.setData(value, path, setDataOptions, info);
 		}
 
-		onDataNotFoundAll(path: GetPath) {
+		onDataNotFound(path: GetPath) {
 			this.getDataFromServer(path);
 		}
 	};

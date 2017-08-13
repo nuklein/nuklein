@@ -89,18 +89,18 @@ export default class Fragment {
 		return (
 			path?: GetPath,
 			specific: boolean,
-			onDataNotFoundAll?: Function,
-			onDataNotFound: Function
+			onDataNotFound?: Function,
+			onDataNotFoundOne: Function
 		) => {
 			let localData = this.data;
-			let ondfa = typeof this.onDataNotFoundAll === 'function'
-				? this.onDataNotFoundAll.bind(this)
-				: undefined;
-			const ondf = typeof this.onDataNotFound === 'function'
+			let ondf = typeof this.onDataNotFound === 'function'
 				? this.onDataNotFound.bind(this)
-				: onDataNotFound;
-			if (!ondfa && onDataNotFoundAll) {
-				ondfa = onDataNotFoundAll;
+				: undefined;
+			const ondfo = typeof this.onDataNotFoundOne === 'function'
+				? this.onDataNotFoundOne.bind(this)
+				: onDataNotFoundOne;
+			if (!ondf && onDataNotFound) {
+				ondf = onDataNotFound;
 			}
 			if (store) {
 				if (store instanceof Fragment || store instanceof Store) {
@@ -116,21 +116,21 @@ export default class Fragment {
 			let value = localData;
 
 			if (path) {
-				const res = getPathParse(path, value, ondfa, ondf);
+				const res = getPathParse(path, value, ondf, ondfo);
 				value = res.value;
 				const nfPath = res.notFoundPath;
 
 				if (typeof value !== 'object') {
 					if (
-						(this.onDataNotFound || onDataNotFound)
+						(this.onDataNotFoundOne || onDataNotFoundOne)
 						&& (value === undefined || value === null)
 					) {
 						let v;
-						if (this.onDataNotFound) {
-							v = this.onDataNotFound(path);
+						if (this.onDataNotFoundOne) {
+							v = this.onDataNotFoundOne(path);
 						}
-						if ((v === undefined || v === null) && onDataNotFound) {
-							v = onDataNotFound(path);
+						if ((v === undefined || v === null) && onDataNotFoundOne) {
+							v = onDataNotFoundOne(path);
 						}
 						if (v !== undefined && v !== null) {
 							return v;
@@ -140,11 +140,11 @@ export default class Fragment {
 						&& !this.dataNotFoundPaths.find(v => isEqual(v, path))) {
 						this.dataNotFoundPaths.push(path);
 						let nfValue;
-						if (typeof this.onDataNotFoundAll === 'function') {
-							nfValue = this.onDataNotFoundAll(path);
+						if (typeof this.onDataNotFound === 'function') {
+							nfValue = this.onDataNotFound(path);
 						}
-						if (typeof onDataNotFoundAll === 'function') {
-							nfValue = onDataNotFoundAll(path);
+						if (typeof onDataNotFound === 'function') {
+							nfValue = onDataNotFound(path);
 						}
 						if (nfValue) {
 							return nfValue;
@@ -156,11 +156,11 @@ export default class Fragment {
 					if (nfPath && !this.dataNotFoundPaths.find(v => isEqual(v, nfPath))) {
 						this.dataNotFoundPaths.push(nfPath);
 						let nfValue;
-						if (typeof this.onDataNotFoundAll === 'function') {
-							nfValue = this.onDataNotFoundAll(nfPath);
+						if (typeof this.onDataNotFound === 'function') {
+							nfValue = this.onDataNotFound(nfPath);
 						}
-						if (typeof onDataNotFoundAll === 'function') {
-							nfValue = onDataNotFoundAll(nfPath);
+						if (typeof onDataNotFound === 'function') {
+							nfValue = onDataNotFound(nfPath);
 						}
 						if (nfValue && value) {
 							value = mergeDeepWith(value, (prev, next, key, localPath) => {
@@ -171,27 +171,27 @@ export default class Fragment {
 									*/
 									let result;
 									if (next._getData && typeof next._getData === 'function') {
-										result = next._getData(undefined, next.getDataIn(), specific, ondfa);
+										result = next._getData(undefined, next.getDataIn(), specific, ondf);
 										next.getCounter();
 									} else {
 										next.beforeGet();
-										result = next.getData(undefined, next.getDataIn(), specific, ondfa);
+										result = next.getData(undefined, next.getDataIn(), specific, ondf);
 										next.getCounter();
 										next.afterGet(result, undefined, specific);
 									}
 									return result;
 								}
 								if (
-									(this.onDataNotFound || onDataNotFound)
+									(this.onDataNotFoundOne || onDataNotFoundOne)
 									&& (next === undefined || next === null)
 									&& (prev === undefined || prev === null)
 								) {
 									let v;
-									if (this.onDataNotFound) {
-										v = this.onDataNotFound(localPath.concat(key).join('.'));
+									if (this.onDataNotFoundOne) {
+										v = this.onDataNotFoundOne(localPath.concat(key).join('.'));
 									}
-									if ((v === undefined || v === null) && onDataNotFound) {
-										v = onDataNotFound(localPath.concat(key).join('.'));
+									if ((v === undefined || v === null) && onDataNotFoundOne) {
+										v = onDataNotFoundOne(localPath.concat(key).join('.'));
 									}
 									if (v !== undefined && v !== null) {
 										return v;
@@ -218,24 +218,24 @@ export default class Fragment {
 				*/
 				let result;
 				if (value._getData && typeof value._getData === 'function') {
-					result = value._getData(undefined, value.getDataIn(), undefined, ondfa);
+					result = value._getData(undefined, value.getDataIn(), undefined, ondf);
 					value.getCounter();
 				} else {
 					value.beforeGet();
-					result = value.getData(undefined, value.getDataIn(), undefined, ondfa);
+					result = value.getData(undefined, value.getDataIn(), undefined, ondf);
 					value.getCounter();
 					value.afterGet(result);
 				}
 				if (
-					(this.onDataNotFound || onDataNotFound)
+					(this.onDataNotFoundOne || onDataNotFoundOne)
 					&& (result === undefined || result === null)
 				) {
 					let v;
-					if (this.onDataNotFound) {
-						v = this.onDataNotFound(path);
+					if (this.onDataNotFoundOne) {
+						v = this.onDataNotFoundOne(path);
 					}
-					if ((v === undefined || v === null) && onDataNotFound) {
-						v = onDataNotFound(path);
+					if ((v === undefined || v === null) && onDataNotFoundOne) {
+						v = onDataNotFoundOne(path);
 					}
 					if (v !== undefined && v !== null) {
 						return v;
@@ -253,24 +253,24 @@ export default class Fragment {
 						*/
 						let result;
 						if (v._getData && typeof v._getData === 'function') {
-							result = v._getData(undefined, v.getDataIn(), specific, ondfa);
+							result = v._getData(undefined, v.getDataIn(), specific, ondf);
 							v.getCounter();
 						} else {
 							v.beforeGet();
-							result = v.getData(undefined, v.getDataIn(), specific, ondfa);
+							result = v.getData(undefined, v.getDataIn(), specific, ondf);
 							v.getCounter();
 							v.afterGet(result, undefined, specific);
 						}
 						if (
-							(this.onDataNotFound || onDataNotFound)
+							(this.onDataNotFoundOne || onDataNotFoundOne)
 							&& (result === undefined || result === null)
 						) {
 							let v;
-							if (this.onDataNotFound) {
-								v = this.onDataNotFound(localPath.concat(key).join('.'));
+							if (this.onDataNotFoundOne) {
+								v = this.onDataNotFoundOne(localPath.concat(key).join('.'));
 							}
-							if ((v === undefined || v === null) && onDataNotFound) {
-								v = onDataNotFound(localPath.concat(key).join('.'));
+							if ((v === undefined || v === null) && onDataNotFoundOne) {
+								v = onDataNotFoundOne(localPath.concat(key).join('.'));
 							}
 							if (v !== undefined && v !== null) {
 								return v;
@@ -285,15 +285,15 @@ export default class Fragment {
 			}
 
 			if (
-				(this.onDataNotFound || onDataNotFound)
+				(this.onDataNotFoundOne || onDataNotFoundOne)
 				&& (value === undefined || value === null)
 			) {
 				let v;
-				if (this.onDataNotFound) {
-					v = this.onDataNotFound(path);
+				if (this.onDataNotFoundOne) {
+					v = this.onDataNotFoundOne(path);
 				}
-				if ((v === undefined || v === null) && onDataNotFound) {
-					v = onDataNotFound(path);
+				if ((v === undefined || v === null) && onDataNotFoundOne) {
+					v = onDataNotFoundOne(path);
 				}
 				if (v !== undefined && v !== null) {
 					return v;
@@ -313,10 +313,10 @@ export default class Fragment {
 		path?: GetPath,
 		getRealData?: Function,
 		specific: boolean,
-		onDataNotFoundAll?: Function,
-		onDataNotFound: Function
+		onDataNotFound?: Function,
+		onDataNotFoundOne: Function
 	) {
-		return this.getDataIn()(this.beforeGet(path), specific, onDataNotFoundAll, onDataNotFound);
+		return this.getDataIn()(this.beforeGet(path), specific, onDataNotFound, onDataNotFoundOne);
 	}
 
 	/* eslint-disable no-unused-vars */
@@ -566,7 +566,7 @@ export default class Fragment {
 
 			this.userGetData = this.getData;
 
-			this._getData = (getPath, getRealData, specific, onDataNotFoundAll, onDataNotFound) => {
+			this._getData = (getPath, getRealData, specific, onDataNotFound, onDataNotFoundOne) => {
 				let result;
 				if (!getPath) {
 					if (this.emptyPath === false) {
@@ -579,8 +579,8 @@ export default class Fragment {
 							this.emptyPath,
 							getRealData,
 							specific,
-							onDataNotFoundAll,
-							onDataNotFound
+							onDataNotFound,
+							onDataNotFoundOne
 						);
 					}
 					this.afterGet(result, this.emptyPath, specific);
@@ -595,8 +595,8 @@ export default class Fragment {
 							this.emptyPath,
 							getRealData,
 							specific,
-							onDataNotFoundAll,
-							onDataNotFound
+							onDataNotFound,
+							onDataNotFoundOne
 						);
 					}
 				} else if (this.dataForPaths.has(newPath)) {
@@ -606,8 +606,8 @@ export default class Fragment {
 						newPath,
 						getRealData,
 						specific,
-						onDataNotFoundAll,
-						onDataNotFound
+						onDataNotFound,
+						onDataNotFoundOne
 					);
 					this.dataForPaths.set(newPath, result);
 				}
@@ -620,8 +620,8 @@ export default class Fragment {
 					getPath,
 					this.getDataIn(),
 					undefined,
-					this.onDataNotFoundAll,
-					this.onDataNotFound
+					this.onDataNotFound,
+					this.onDataNotFoundOne
 				);
 				this.getCounter();
 				return result;
@@ -652,11 +652,11 @@ export default class Fragment {
 				}, 0);
 			};
 
-			if (this.onDataNotFoundAll) {
-				this.useronDataNotFoundAll = this.onDataNotFoundAll;
-				this.onDataNotFoundAll = (...args) => {
+			if (this.onDataNotFound) {
+				this.useronDataNotFound = this.onDataNotFound;
+				this.onDataNotFound = (...args) => {
 					this.dataNotFoundPaths = [];
-					return this.useronDataNotFoundAll(...args);
+					return this.useronDataNotFound(...args);
 				};
 			}
 
