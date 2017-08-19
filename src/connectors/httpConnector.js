@@ -67,11 +67,11 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 						this.debounceForGetEmitters = emitter;
 					})
 					.scan((acc, next) => {
+						let prevPath = acc.path;
 						if (!cachePath) {
-							cachePath = buildPathForStore(acc.path);
-						} else {
-							cachePath = buildPathForStore(next.path, acc.path);
+							prevPath = buildPathForStore(prevPath);
 						}
+						cachePath = buildPathForStore(next.path, prevPath);
 						const newAcc = {
 							...acc,
 							path: cachePath,
@@ -91,11 +91,11 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 							this.debounceForGetEmitters[key] = emitter;
 						})
 						.scan((acc, next) => {
+							let prevPath = acc.path;
 							if (!cachePath) {
-								cachePath = buildPathForStore(acc.path);
-							} else {
-								cachePath = buildPathForStore(next.path, acc.path);
+								prevPath = buildPathForStore(prevPath);
 							}
+							cachePath = buildPathForStore(next.path, prevPath);
 							const newAcc = {
 								...acc,
 								path: cachePath,
