@@ -170,50 +170,55 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 		getDataFromServer(args: Object) {
 			const { path, isStream } = args;
 
-			if (beforeGetData !== undefined && beforeGetData !== null) {
-				this.data.setData(beforeGetData, null, null, { method: this.onDataNotFound });
+			if (this.dataNotFoundPaths.length || this.data.dataNotFoundPaths.length) {
+				if (beforeGetData !== undefined && beforeGetData !== null) {
+					this.data.setData(beforeGetData, null, null, { method: this.onDataNotFound });
+				}
+
+				let pathForServer = path;
+				if (!isStream) {
+					pathForServer = buildPathForStore(path);
+				}
+
+				fetch(addr, {
+					method: 'POST',
+					body: JSON.stringify({
+						method: 'getStore',
+						args: [
+							pathForServer,
+						],
+					}),
+					headers: {
+						'Content-Type': 'application/json',
+					},
+				})
+				.then(res => res.json())
+				.then(res => {
+					let data = res;
+
+					if (afterGetData) {
+						data = { ...data, ...afterGetData };
+					}
+
+					this.data.setData(data, null, null, { method: this.onDataNotFound })
+						.then(() => {
+							this.data.setData(null, null, { clearPaths: true }, { method: this.onDataNotFound });
+						});
+				})
+				.catch(err => {
+					if (!getErrorData && typeof onGetError !== 'function') {
+						console.error(err);
+					}
+
+					if (getErrorData) {
+						this.data.setData(getErrorData, null, null, { method: this.onDataNotFound });
+					}
+
+					if (typeof onGetError === 'function') {
+						onGetError.bind(this.data)(err);
+					}
+				});
 			}
-
-			let pathForServer = path;
-			if (!isStream) {
-				pathForServer = buildPathForStore(path);
-			}
-
-			fetch(addr, {
-				method: 'POST',
-				body: JSON.stringify({
-					method: 'getStore',
-					args: [
-						pathForServer,
-					],
-				}),
-				headers: {
-					'Content-Type': 'application/json',
-				},
-			})
-			.then(res => res.json())
-			.then(res => {
-				let data = res;
-
-				if (afterGetData) {
-					data = { ...data, ...afterGetData };
-				}
-
-				this.data.setData(data, null, { clearPaths: true }, { method: this.onDataNotFound });
-			})
-			.catch(err => {
-				if (!getErrorData && typeof onGetError !== 'function') {
-					console.error(err);
-				}
-
-				if (getErrorData) {
-					this.data.setData(getErrorData, null, null, { method: this.onDataNotFound });
-				}
-
-				if (typeof onGetError === 'function') {
-					onGetError.bind(this.data)(err);
-				}
-			});
 		}
 
 		afterInit() {

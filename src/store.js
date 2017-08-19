@@ -431,7 +431,8 @@ export default class Store {
 		value: Object|Array<*>,
 		path: string|number|Array<string|number>,
 		options?: any,
-		info?: Object
+		info?: Object,
+		res: Function,
 	): Store {
 		const { value: myValue = value, path: myPath = path } = this.beforeSet(
 			value,
@@ -449,6 +450,8 @@ export default class Store {
 		this.normalizeData = this.getDataIn()();
 		this.dataForPaths = new Map();
 
+		res();
+
 		setTimeout(() => {
 			this.afterSet(myValue, myPath, prevData, this.normalizeData, options, info);
 		}, 0);
@@ -463,11 +466,13 @@ export default class Store {
 		options?: any,
 		info?: Object
 	) {
-		if (isNode) {
-			this.emitter.emit('event', [value, path, options, info]);
-		} else {
-			this.emitter.emit([value, path, options, info]);
-		}
+		return new Promise(res => {
+			if (isNode) {
+				this.emitter.emit('event', [value, path, options, info, res]);
+			} else {
+				this.emitter.emit([value, path, options, info, res]);
+			}
+		});
 	}
 
 	/* eslint-disable no-unused-vars */
