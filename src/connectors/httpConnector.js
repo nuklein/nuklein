@@ -62,13 +62,19 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 
 			if (debounceForGet) {
 				if (typeof debounceForGet === 'number') {
+					let cachePath = null;
 					this.debounceForGetStreams = Kefir.stream(emitter => {
 						this.debounceForGetEmitters = emitter;
 					})
 					.scan((acc, next) => {
+						if (!cachePath) {
+							cachePath = buildPathForStore(acc.path);
+						} else {
+							cachePath = buildPathForStore(next.path, acc.path);
+						}
 						const newAcc = {
 							...acc,
-							path: buildPathForStore(next.path, acc.path),
+							path: cachePath,
 						};
 						return newAcc;
 					})
@@ -86,7 +92,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 						})
 						.scan((acc, next) => {
 							if (!cachePath) {
-								cachePath = buildPathForStore(next.path);
+								cachePath = buildPathForStore(acc.path);
 							} else {
 								cachePath = buildPathForStore(next.path, acc.path);
 							}
