@@ -26,7 +26,9 @@ export default function subscribe(params: SubscribeParams) {
 
 	const componentOrServer = component || server;
 
-	const { setStore, getStore } = store;
+	const { setStore, getStore: originalGetStore } = store;
+
+	const getStore = path => originalGetStore(path, { component });
 
 	if (before && typeof before === 'function') {
 		const newValue = before(getStore, componentOrServer, getProps(), 'init');

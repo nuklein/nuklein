@@ -98,7 +98,7 @@ export default class Store {
 
 	@autobind
 	getDataIn(store?: Object|Array<*>|Store|Fragment) {
-		return (path?: GetPath) => {
+		return (path?: GetPath, info?: Object) => {
 			let localData = this.data;
 			if (store) {
 				if (store instanceof Store || store instanceof Fragment) {
@@ -113,7 +113,7 @@ export default class Store {
 
 			let value = localData;
 			if (path) {
-				value = getPathParse(path, value).value;
+				value = getPathParse(path, value, info).value;
 
 				if (typeof value !== 'object') {
 					// @TODO собирание не найденных значений, а потом вызов onDataNotFound()
@@ -132,11 +132,11 @@ export default class Store {
 				*/
 				let result;
 				if (value._getData && typeof value._getData === 'function') {
-					result = value._getData(undefined, value.getDataIn());
+					result = value._getData(undefined, value.getDataIn(), info);
 					value.getCounter();
 				} else {
 					value.beforeGet();
-					result = value.getData(undefined, value.getDataIn());
+					result = value.getData(undefined, value.getDataIn(), info);
 					value.getCounter();
 					value.afterGet(result);
 				}
@@ -152,11 +152,11 @@ export default class Store {
 						*/
 						let result;
 						if (v._getData && typeof v._getData === 'function') {
-							result = v._getData(undefined, v.getDataIn());
+							result = v._getData(undefined, v.getDataIn(), info);
 							v.getCounter();
 						} else {
 							v.beforeGet();
-							result = v.getData(undefined, v.getDataIn());
+							result = v.getData(undefined, v.getDataIn(), info);
 							v.getCounter();
 							v.afterGet(result);
 						}
@@ -173,8 +173,8 @@ export default class Store {
 	}
 
 	@autobind
-	getData(path?: GetPath) {
-		return this.getDataIn()(path);
+	getData(path?: GetPath, info?: Object) {
+		return this.getDataIn()(path, info);
 	}
 
 	beforeGet(path?: GetPath) {
@@ -182,7 +182,7 @@ export default class Store {
 	}
 
 	@autobind
-	getStore(path?: GetPath) {
+	getStore(path?: GetPath, info?: Object) {
 		if (!path) {
 			if (this.emptyPath === false) {
 				this.emptyPath = this.beforeGet();
@@ -202,7 +202,7 @@ export default class Store {
 			if (this.dataForPaths.has(newPath)) {
 				result = this.dataForPaths.get(newPath);
 			} else {
-				result = this.getData(newPath);
+				result = this.getData(newPath, info);
 				this.dataForPaths.set(newPath, result);
 			}
 		}

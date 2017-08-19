@@ -88,6 +88,7 @@ export default class Fragment {
 	getDataIn(store?: Object|Array<*>|Store|Fragment) {
 		return (
 			path?: GetPath,
+			info?: Object,
 			specific: boolean,
 			onDataNotFound?: Function,
 			onDataNotFoundOne: Function
@@ -116,7 +117,7 @@ export default class Fragment {
 			let value = localData;
 
 			if (path) {
-				const res = getPathParse(path, value, ondf, ondfo);
+				const res = getPathParse(path, value, info, ondf, ondfo);
 				value = res.value;
 				const nfPath = res.notFoundPath;
 
@@ -127,10 +128,10 @@ export default class Fragment {
 					) {
 						let v;
 						if (this.onDataNotFoundOne) {
-							v = this.onDataNotFoundOne(path);
+							v = this.onDataNotFoundOne(path, info);
 						}
 						if ((v === undefined || v === null) && onDataNotFoundOne) {
-							v = onDataNotFoundOne(path);
+							v = onDataNotFoundOne(path, info);
 						}
 						if (v !== undefined && v !== null) {
 							return v;
@@ -141,10 +142,10 @@ export default class Fragment {
 						this.dataNotFoundPaths.push(path);
 						let nfValue;
 						if (typeof this.onDataNotFound === 'function') {
-							nfValue = this.onDataNotFound(path);
+							nfValue = this.onDataNotFound(path, info);
 						}
 						if (typeof onDataNotFound === 'function') {
-							nfValue = onDataNotFound(path);
+							nfValue = onDataNotFound(path, info);
 						}
 						if (nfValue) {
 							return nfValue;
@@ -157,10 +158,10 @@ export default class Fragment {
 						this.dataNotFoundPaths.push(nfPath);
 						let nfValue;
 						if (typeof this.onDataNotFound === 'function') {
-							nfValue = this.onDataNotFound(nfPath);
+							nfValue = this.onDataNotFound(nfPath, info);
 						}
 						if (typeof onDataNotFound === 'function') {
-							nfValue = onDataNotFound(nfPath);
+							nfValue = onDataNotFound(nfPath, info);
 						}
 						if (nfValue && value) {
 							value = mergeDeepWith(value, (prev, next, key, localPath) => {
@@ -171,11 +172,11 @@ export default class Fragment {
 									*/
 									let result;
 									if (next._getData && typeof next._getData === 'function') {
-										result = next._getData(undefined, next.getDataIn(), specific, ondf);
+										result = next._getData(undefined, next.getDataIn(), info, specific, ondf);
 										next.getCounter();
 									} else {
 										next.beforeGet();
-										result = next.getData(undefined, next.getDataIn(), specific, ondf);
+										result = next.getData(undefined, next.getDataIn(), info, specific, ondf);
 										next.getCounter();
 										next.afterGet(result, undefined, specific);
 									}
@@ -188,10 +189,10 @@ export default class Fragment {
 								) {
 									let v;
 									if (this.onDataNotFoundOne) {
-										v = this.onDataNotFoundOne(localPath.concat(key).join('.'));
+										v = this.onDataNotFoundOne(localPath.concat(key).join('.'), info);
 									}
 									if ((v === undefined || v === null) && onDataNotFoundOne) {
-										v = onDataNotFoundOne(localPath.concat(key).join('.'));
+										v = onDataNotFoundOne(localPath.concat(key).join('.'), info);
 									}
 									if (v !== undefined && v !== null) {
 										return v;
@@ -218,11 +219,11 @@ export default class Fragment {
 				*/
 				let result;
 				if (value._getData && typeof value._getData === 'function') {
-					result = value._getData(undefined, value.getDataIn(), undefined, ondf);
+					result = value._getData(undefined, value.getDataIn(), info, undefined, ondf);
 					value.getCounter();
 				} else {
 					value.beforeGet();
-					result = value.getData(undefined, value.getDataIn(), undefined, ondf);
+					result = value.getData(undefined, value.getDataIn(), info, undefined, ondf);
 					value.getCounter();
 					value.afterGet(result);
 				}
@@ -232,10 +233,10 @@ export default class Fragment {
 				) {
 					let v;
 					if (this.onDataNotFoundOne) {
-						v = this.onDataNotFoundOne(path);
+						v = this.onDataNotFoundOne(path, info);
 					}
 					if ((v === undefined || v === null) && onDataNotFoundOne) {
-						v = onDataNotFoundOne(path);
+						v = onDataNotFoundOne(path, info);
 					}
 					if (v !== undefined && v !== null) {
 						return v;
@@ -253,11 +254,11 @@ export default class Fragment {
 						*/
 						let result;
 						if (v._getData && typeof v._getData === 'function') {
-							result = v._getData(undefined, v.getDataIn(), specific, ondf);
+							result = v._getData(undefined, v.getDataIn(), info, specific, ondf);
 							v.getCounter();
 						} else {
 							v.beforeGet();
-							result = v.getData(undefined, v.getDataIn(), specific, ondf);
+							result = v.getData(undefined, v.getDataIn(), info, specific, ondf);
 							v.getCounter();
 							v.afterGet(result, undefined, specific);
 						}
@@ -267,10 +268,10 @@ export default class Fragment {
 						) {
 							let v;
 							if (this.onDataNotFoundOne) {
-								v = this.onDataNotFoundOne(localPath.concat(key).join('.'));
+								v = this.onDataNotFoundOne(localPath.concat(key).join('.'), info);
 							}
 							if ((v === undefined || v === null) && onDataNotFoundOne) {
-								v = onDataNotFoundOne(localPath.concat(key).join('.'));
+								v = onDataNotFoundOne(localPath.concat(key).join('.'), info);
 							}
 							if (v !== undefined && v !== null) {
 								return v;
@@ -290,10 +291,10 @@ export default class Fragment {
 			) {
 				let v;
 				if (this.onDataNotFoundOne) {
-					v = this.onDataNotFoundOne(path);
+					v = this.onDataNotFoundOne(path, info);
 				}
 				if ((v === undefined || v === null) && onDataNotFoundOne) {
-					v = onDataNotFoundOne(path);
+					v = onDataNotFoundOne(path, info);
 				}
 				if (v !== undefined && v !== null) {
 					return v;
@@ -312,11 +313,14 @@ export default class Fragment {
 	getData(
 		path?: GetPath,
 		getRealData?: Function,
+		info?: Object,
 		specific: boolean,
 		onDataNotFound?: Function,
 		onDataNotFoundOne: Function
 	) {
-		return this.getDataIn()(this.beforeGet(path), specific, onDataNotFound, onDataNotFoundOne);
+		return this.getDataIn()(
+			this.beforeGet(path), info, specific, onDataNotFound, onDataNotFoundOne
+		);
 	}
 
 	/* eslint-disable no-unused-vars */
@@ -566,7 +570,7 @@ export default class Fragment {
 
 			this.userGetData = this.getData;
 
-			this._getData = (getPath, getRealData, specific, onDataNotFound, onDataNotFoundOne) => {
+			this._getData = (getPath, getRealData, info, specific, onDataNotFound, onDataNotFoundOne) => {
 				let result;
 				if (!getPath) {
 					if (this.emptyPath === false) {
@@ -578,6 +582,7 @@ export default class Fragment {
 						result = this.userGetData(
 							this.emptyPath,
 							getRealData,
+							info,
 							specific,
 							onDataNotFound,
 							onDataNotFoundOne
@@ -594,6 +599,7 @@ export default class Fragment {
 						result = this.userGetData(
 							this.emptyPath,
 							getRealData,
+							info,
 							specific,
 							onDataNotFound,
 							onDataNotFoundOne
@@ -605,6 +611,7 @@ export default class Fragment {
 					result = this.userGetData(
 						newPath,
 						getRealData,
+						info,
 						specific,
 						onDataNotFound,
 						onDataNotFoundOne
@@ -615,10 +622,11 @@ export default class Fragment {
 				return result;
 			};
 			
-			this.getData = (getPath) => {
+			this.getData = (getPath, info) => {
 				const result = this._getData(
 					getPath,
 					this.getDataIn(),
+					info,
 					undefined,
 					this.onDataNotFound,
 					this.onDataNotFoundOne

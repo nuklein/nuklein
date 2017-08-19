@@ -3,7 +3,7 @@ import Kefir from 'kefir';
 import type { Emitter } from 'kefir'; // eslint-disable-line
 import fetch from 'isomorphic-fetch';
 import { Fragment } from '../index';
-import mergeDataToPath from '../utils/mergeDataToPath';
+import buildPathForStore from '../utils/buildPathForStore';
 import type { GetPath } from '../types/GetPath';
 
 export default (addr: string, options?: Object = {}) => (MyFragment: typeof Fragment) => {
@@ -17,41 +17,90 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 		setErrorData,
 		onSet,
 		debounceForSet,
+		debounceForGet,
 		onlyServerModificators,
 	} = options;
 
 
 	return class HttpConnector extends Fragment {
-		stream: Kefir.Observable<*, *>;
-		setStreamEmitter: Emitter<*, *>;
-		debounceStreams: Kefir.Observable<*, *> | { [key: string]: Kefir.Observable<*, *>; };
-		debounceEmitters: Emitter<*, *> | { [key: string]: Emitter<*, *>; };
+		debounceForSetStream: Kefir.Observable<*, *>;
+		debounceForSetEmitter: Emitter<*, *>;
+		debounceForSetStreams: Kefir.Observable<*, *> | { [key: string]: Kefir.Observable<*, *>; };
+		debounceForSetEmitters: Emitter<*, *> | { [key: string]: Emitter<*, *>; };
+
+		debounceForGetStreams: Kefir.Observable<*, *> | { [key: string]: Kefir.Observable<*, *>; };
+		debounceForGetEmitters: Emitter<*, *> | { [key: string]: Emitter<*, *>; };
 
 		constructor(...args: Array<Object>) {
 			super(...args);
 
-			this.stream = Kefir.stream(emitter => {
-				this.setStreamEmitter = emitter;
+			this.debounceForSetStream = Kefir.stream(emitter => {
+				this.debounceForSetEmitter = emitter;
 			})
-			.onValue(this.kefirOnValue);
+			.onValue(this.kefirOnValueForSet);
 
 			if (debounceForSet) {
 				if (typeof debounceForSet === 'number') {
-					this.debounceStreams = Kefir.stream(emitter => {
-						this.debounceEmitters = emitter;
+					this.debounceForSetStreams = Kefir.stream(emitter => {
+						this.debounceForSetEmitters = emitter;
 					})
 					.debounce(debounceForSet)
-					.onValue(this.kefirOnValue);
+					.onValue(this.kefirOnValueForSet);
 				} else if (typeof debounceForSet === 'object') {
-					this.debounceStreams = {};
-					this.debounceEmitters = {};
+					this.debounceForSetStreams = {};
+					this.debounceForSetEmitters = {};
 
 					Object.keys(debounceForSet).forEach(key => {
-						this.debounceStreams[key] = Kefir.stream(emitter => {
-							this.debounceEmitters[key] = emitter;
+						this.debounceForSetStreams[key] = Kefir.stream(emitter => {
+							this.debounceForSetEmitters[key] = emitter;
 						})
 						.debounce(debounceForSet[key])
-						.onValue(this.kefirOnValue);
+						.onValue(this.kefirOnValueForSet);
+					});
+				}
+			}
+
+			if (debounceForGet) {
+				if (typeof debounceForGet === 'number') {
+					this.debounceForGetStreams = Kefir.stream(emitter => {
+						this.debounceForGetEmitters = emitter;
+					})
+					.scan((acc, next) => {
+						const newAcc = {
+							...acc,
+							path: buildPathForStore(next.path, acc.path),
+						};
+						return newAcc;
+					})
+					.debounce(debounceForGet)
+					.onValue(this.getDataFromServer);
+				} else if (typeof debounceForGet === 'object') {
+					this.debounceForGetStreams = {};
+					this.debounceForGetEmitters = {};
+
+					Object.keys(debounceForGet).forEach(key => {
+						let cachePath = null;
+
+						this.debounceForGetStreams[key] = Kefir.stream(emitter => {
+							this.debounceForGetEmitters[key] = emitter;
+						})
+						.scan((acc, next) => {
+							if (!cachePath) {
+								cachePath = buildPathForStore(next.path);
+							} else {
+								cachePath = buildPathForStore(next.path, acc.path);
+							}
+							const newAcc = {
+								...acc,
+								path: cachePath,
+							};
+							return newAcc;
+						})
+						.debounce(debounceForGet[key])
+						.onValue((...localArgs) => {
+							cachePath = null;
+							this.getDataFromServer(...localArgs);
+						});
 					});
 				}
 			}
@@ -61,7 +110,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			return new MyFragment();
 		}
 
-		kefirOnValue = (args: Object) => {
+		kefirOnValueForSet = (args: Object) => {
 			const { value, path, setDataOptions, info = {} } = args;
 
 			const localInfo = {};
@@ -118,9 +167,16 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			});
 		}
 
-		getDataFromServer(path: GetPath) {
+		getDataFromServer(args: Object) {
+			const { path, isStream } = args;
+
 			if (beforeGetData !== undefined && beforeGetData !== null) {
 				this.data.setData(beforeGetData, null, null, { method: this.onDataNotFound });
+			}
+
+			let pathForServer = path;
+			if (!isStream) {
+				pathForServer = buildPathForStore(path);
 			}
 
 			fetch(addr, {
@@ -128,7 +184,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 				body: JSON.stringify({
 					method: 'getStore',
 					args: [
-						path,
+						pathForServer,
 					],
 				}),
 				headers: {
@@ -137,7 +193,7 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			})
 			.then(res => res.json())
 			.then(res => {
-				let data = mergeDataToPath(res, path);
+				let data = res;
 
 				if (afterGetData) {
 					data = { ...data, ...afterGetData };
@@ -213,24 +269,24 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			}
 
 			if (debounceForSet) {
-				if (this.debounceEmitters) {
+				if (this.debounceForSetEmitters) {
 					if (typeof debounceForSet === 'number') {
-						this.debounceEmitters.emit({value, path, setDataOptions, info});
+						this.debounceForSetEmitters.emit({value, path, setDataOptions, info});
 					} else if (typeof debounceForSet === 'object') {
 						if (callingModificatorName && debounceForSet[callingModificatorName]) {
-							this.debounceEmitters[callingModificatorName].emit({
+							this.debounceForSetEmitters[callingModificatorName].emit({
 								value,
 								path,
 								setDataOptions,
 								info,
 							});
-						} else if (this.setStreamEmitter) {
-							this.setStreamEmitter.emit({value, path, setDataOptions, info});
+						} else if (this.debounceForSetEmitter) {
+							this.debounceForSetEmitter.emit({value, path, setDataOptions, info});
 						}
 					}
 				}
-			} else if (this.setStreamEmitter) {
-				this.setStreamEmitter.emit({value, path, setDataOptions, info});
+			} else if (this.debounceForSetEmitter) {
+				this.debounceForSetEmitter.emit({value, path, setDataOptions, info});
 			}
 
 			let isOnlyServer = false;
@@ -245,8 +301,27 @@ export default (addr: string, options?: Object = {}) => (MyFragment: typeof Frag
 			return this.original.setData(value, path, setDataOptions, info);
 		}
 
-		onDataNotFound(path: GetPath) {
-			this.getDataFromServer(path);
+		onDataNotFound(path: GetPath, info?: Object) {
+			if (debounceForGet) {
+				if (this.debounceForGetEmitters) {
+					if (typeof debounceForGet === 'number') {
+						this.debounceForGetEmitters.emit({path, isStream: true});
+					} else if (typeof debounceForGet === 'object') {
+						let callingComponentName;
+						if (info && info.component) {
+							callingComponentName = info.component.name;
+						}
+
+						if (callingComponentName && debounceForGet[callingComponentName]) {
+							this.debounceForGetEmitters[callingComponentName].emit({path, isStream: true});
+						} else {
+							this.getDataFromServer({path});
+						}
+					}
+				}
+			} else {
+				this.getDataFromServer({path});
+			}
 		}
 	};
 };

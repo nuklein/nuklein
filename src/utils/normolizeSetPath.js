@@ -1,12 +1,12 @@
 /* @flow */
-export function isNumber(v: string|number, stringToNumber: boolean) {
+export function isNumber(v: string|number, stringToNumber?: boolean) {
 	if (stringToNumber) {
 		return !isNaN(Number(v));
 	}
 	return typeof v === 'number';
 }
 
-export function toMaybeNumber(v: string|number, stringToNumber: boolean) {
+export function toMaybeNumber(v: string|number, stringToNumber?: boolean) {
 	if (!stringToNumber) {
 		return v;
 	}
@@ -19,7 +19,7 @@ export function toStr(v: string|number) {
 
 export default function normolizeSetPath(
 	path: string|number|Array<string|number>,
-	forImmutable: boolean
+	forImmutable?: boolean
 ) : Array<string|number> {
 	switch (true) {
 	case typeof path === 'number':

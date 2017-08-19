@@ -3,7 +3,7 @@ import { Iterable, List, OrderedMap } from 'immutable';
 import Fragment from '../fragment';
 import type { GetPath } from '../types/GetPath';
 
-function stringPathParse(path: string, data: Object, insPath?: {
+function stringPathParse(path: string, data: Object, info, insPath?: {
 	[propName: string]: GetPath;
 }, onDataNotFound, onDataNotFoundOne): { value: any; exit: boolean; } {
 	let value = data;
@@ -60,6 +60,7 @@ function stringPathParse(path: string, data: Object, insPath?: {
 					value = localValue._getData(
 						newPath,
 						localValue.getDataIn(),
+						info,
 						true,
 						onDataNotFound,
 						onDataNotFoundOne
@@ -70,6 +71,7 @@ function stringPathParse(path: string, data: Object, insPath?: {
 					value = localValue.getData(
 						newPath,
 						localValue.getDataIn(),
+						info,
 						true,
 						onDataNotFound,
 						onDataNotFoundOne
@@ -100,6 +102,7 @@ function stringPathParse(path: string, data: Object, insPath?: {
 function arrayPathParse(
 	path: Array<GetPath>,
 	data: Object,
+	info,
 	onDataNotFound?: Function,
 	onDataNotFoundOne?: Function,
 	originalPath?: GetPath,
@@ -112,6 +115,7 @@ function arrayPathParse(
 			const res = getPathParse(
 				v,
 				data,
+				info,
 				onDataNotFound,
 				onDataNotFoundOne,
 				originalPath || path,
@@ -133,6 +137,7 @@ function objectPathParse(
 		[propName: string]: GetPath;
 	},
 	data: Object,
+	info,
 	onDataNotFound?: Function,
 	onDataNotFoundOne?: Function,
 	originalPath?: GetPath,
@@ -143,7 +148,9 @@ function objectPathParse(
 	let notFoundPath = nfPath;
 	const insPath = {...path, ...{ _path: undefined }};
 	if (path._path) {
-		const strRes = stringPathParse(path._path, data, insPath, onDataNotFound, onDataNotFoundOne);
+		const strRes = stringPathParse(
+			path._path, data, info, insPath, onDataNotFound, onDataNotFoundOne
+		);
 		localData = strRes.value;
 		if (strRes.exit) {
 			return { value: localData, notFoundPath };
@@ -155,6 +162,7 @@ function objectPathParse(
 			const res = getPathParse(
 				path[key],
 				localData,
+				info,
 				onDataNotFound,
 				onDataNotFoundOne,
 				originalPath || path,
@@ -174,6 +182,7 @@ function objectPathParse(
 export default function getPathParse(
 	path: GetPath,
 	data: Object,
+	info?: Object,
 	onDataNotFound?: Function,
 	onDataNotFoundOne?: Function,
 	originalPath?: GetPath,
@@ -193,6 +202,7 @@ export default function getPathParse(
 			value = localValue._getData(
 				path,
 				localValue.getDataIn(),
+				info,
 				true,
 				onDataNotFound,
 				onDataNotFoundOne
@@ -203,6 +213,7 @@ export default function getPathParse(
 			value = localValue.getData(
 				path,
 				localValue.getDataIn(),
+				info,
 				true,
 				onDataNotFound,
 				onDataNotFoundOne
@@ -214,10 +225,10 @@ export default function getPathParse(
 	}
 
 	if (path && typeof path === 'string') {
-		value = stringPathParse(path, value, undefined, onDataNotFound, onDataNotFoundOne).value;
+		value = stringPathParse(path, value, info, undefined, onDataNotFound, onDataNotFoundOne).value;
 		if (value === undefined || value === null) {
 			if (onDataNotFoundOne) {
-				value = onDataNotFoundOne(path);
+				value = onDataNotFoundOne(path, info);
 			}
 
 			if (originalPath && (value === undefined || value === null)) {
@@ -263,6 +274,7 @@ export default function getPathParse(
 		const res = arrayPathParse(
 			path,
 			value,
+			info,
 			onDataNotFound,
 			onDataNotFoundOne,
 			originalPath || path,
@@ -277,6 +289,7 @@ export default function getPathParse(
 		const res = objectPathParse(
 			path,
 			value,
+			info,
 			onDataNotFound,
 			onDataNotFoundOne,
 			originalPath || path,
